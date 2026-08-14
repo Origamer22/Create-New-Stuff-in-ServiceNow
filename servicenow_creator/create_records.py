@@ -10,6 +10,11 @@ if not all([SN_INSTANCE, SN_USERNAME, SN_PASSWORD]):
     print("Error: Missing ServiceNow credentials.")
     exit(1)
 
+# Clean up SN_INSTANCE in case full URL or FQDN was provided
+SN_INSTANCE = SN_INSTANCE.replace('https://', '').replace('http://', '').rstrip('/')
+if SN_INSTANCE.endswith('.service-now.com'):
+    SN_INSTANCE = SN_INSTANCE.replace('.service-now.com', '')
+
 BASE_URL = f"https://{SN_INSTANCE}.service-now.com/api/now/table"
 HEADERS = {"Content-Type": "application/json", "Accept": "application/json"}
 AUTH = (SN_USERNAME, SN_PASSWORD)
