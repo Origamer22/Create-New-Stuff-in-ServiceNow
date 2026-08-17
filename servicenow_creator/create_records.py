@@ -31,9 +31,9 @@ def create_record(table, payload):
 
 def start_planned_changes():
     url = f"{BASE_URL}/change_request"
-    # Query changes where start_date is on or before today, and state is not Implement (or closed)
-    # -1 is typically Implement.
-    query = "active=true^stateNOT IN-1,3,4^start_date<=javascript:gs.nowNoTZ()"
+    # Query changes where start_date is on or before today, and state is Scheduled (-2)
+    # Only Scheduled changes can transition directly to Implement (-1).
+    query = "active=true^state=-2^start_date<=javascript:gs.nowNoTZ()"
     params = {"sysparm_query": query}
     response = requests.get(url, auth=AUTH, headers=HEADERS, params=params)
     if response.status_code == 200:
