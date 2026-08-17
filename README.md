@@ -13,6 +13,9 @@ The `create_records.py` script automatically performs the following actions:
 - **Progress record states**: 
   - Starts planned Change Requests (moves Scheduled changes to Implement if their start date is reached).
   - Reassigns active Incidents to a random active user group.
+- **Display Running Changes**: 
+  - Automatically queries and lists all running changes ("Implement" or "Review" states).
+  - Appends this list to the GitHub Actions Job Summary (`GITHUB_STEP_SUMMARY`) for immediate visibility.
 - **GitHub Actions Integration**: Designed to be run effortlessly via GitHub Actions, either on a daily cron schedule or manually via `workflow_dispatch`.
 
 ## Setup
@@ -57,7 +60,7 @@ This repository includes a GitHub Actions workflow (`.github/workflows/serviceno
 
 **Checking if it works:**
 
-1. **Check GitHub Logs**: After triggering the workflow, click on the workflow run in the Actions tab. Click on the `run-scripts` job to view the console output. You should see logs like `Creating Incidents...`, `Created incident: INC0012345`, etc.
+1. **Check GitHub Logs & Summary**: After triggering the workflow, click on the workflow run in the Actions tab. You will see a rich **Job Summary** showing the "Running Changes" right on the summary page. Click on the `run-scripts` job to view the raw console output under "Run ServiceNow Script and Show Running Changes" to see detailed logs like `Creating Incidents...`, `Created incident: INC0012345`, etc.
 2. **Verify in ServiceNow**: Log into your ServiceNow instance and navigate to the respective lists (e.g., type `incident.list`, `problem.list`, or `change_request.list` in the filter navigator). Verify that new records have been created, or existing records have been closed/reassigned at the exact time the script was run.
 
 ### Running Locally

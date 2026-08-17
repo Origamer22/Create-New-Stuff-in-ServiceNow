@@ -109,8 +109,16 @@ def ensure_minimum_active_changes(min_count=3):
         for _ in range(needed):
             now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             chg = create_record("change_request", {
-                "short_description": "Auto-generated active change request",
+                "short_description": "Auto-generated active change: Routine maintenance",
+                "description": "Routine maintenance and security patching for infrastructure servers.",
+                "justification": "Required to keep servers compliant with the latest security baseline.",
+                "implementation_plan": "1. Verify backups.\n2. Apply patches.\n3. Restart services.\n4. Perform health checks.",
+                "risk_impact_analysis": "Low risk, maintenance performed during off-hours with redundant systems in place.",
+                "backout_plan": "Restore from backups or uninstall patches if issues arise.",
+                "test_plan": "Run automated health check scripts post-patching.",
                 "type": "normal",
+                "priority": "4",
+                "risk": "4",
                 "start_date": now_str
             })
             if chg:
@@ -155,6 +163,41 @@ def close_incidents():
         if update_record("incident", inc_id, payload):
             print(f"Successfully closed incident {inc_num}")
 
+def print_running_changes():
+    print("\n--- Running Changes ---")
+    # State -1 is Implement, 0 is Review
+    changes = get_records("change_request", "active=true^stateIN-1,0")
+    
+    summary = f"### Running Changes ({len(changes)})\n\n"
+    
+    if changes:
+        for chg in changes:
+            num = chg.get('number', 'Unknown')
+            short_desc = chg.get('short_description', 'No description')
+            state = chg.get('state', 'Unknown')
+            state_str = "Implement" if str(state) == "-1" else "Review" if str(state) == "0" else str(state)
+            
+            assignee = chg.get('assigned_to')
+            if type(assignee) is dict:
+                assignee_name = assignee.get('display_value', 'Unknown')
+            else:
+                assignee_name = str(assignee) if assignee else "N/A"
+                
+            line = f"- **{num}**: {short_desc} (State: {state_str}, Assigned: {assignee_name})"
+            print(line.replace("**", "")) # Print plain text to console
+            summary += line + "\n"
+    else:
+        msg = "No running changes found."
+        print(msg)
+        summary += msg + "\n"
+        
+    print("-----------------------\n")
+    
+    # Write to GitHub Step Summary if running in GitHub Actions
+    if os.environ.get('GITHUB_STEP_SUMMARY'):
+        with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+            f.write(summary)
+
 def main():
     print("Starting ServiceNow Scheduled Tasks...")
 
@@ -164,16 +207,38 @@ def main():
     
     # 3. Create new records for today
     print("Creating Incidents...")
-    create_record("incident", {"short_description": "Auto-generated incident", "urgency": "2", "impact": "2"})
+    create_record("incident", {
+        "short_description": "Auto-generated incident: Database connection timeout",
+        "description": "Users are reporting intermittent connection timeouts when accessing the main database. This has been happening since the latest maintenance window. We need to check the logs and network configurations to identify the root cause.",
+        "urgency": "2",
+        "impact": "2",
+        "category": "database",
+        "subcategory": "outage",
+        "contact_type": "email"
+    })
     
     print("Creating Problems...")
-    create_record("problem", {"short_description": "Auto-generated problem from recurring incidents"})
+    create_record("problem", {
+        "short_description": "Auto-generated problem: Recurring network latency",
+        "description": "A high number of incidents have been reported regarding slow response times across various applications. This problem record is to track the root cause analysis and resolution of the underlying network latency.",
+        "urgency": "2",
+        "impact": "2",
+        "category": "network"
+    })
     
     print("Creating Change Requests...")
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     create_record("change_request", {
-        "short_description": "Auto-generated change request",
+        "short_description": "Auto-generated change: Upgrade core switch firmware",
+        "description": "Upgrading the firmware on the core switches to version 12.4.5 to resolve known stability issues and improve network throughput.",
+        "justification": "Required to address the recent network latency problems and apply security patches.",
+        "implementation_plan": "1. Backup current configuration.\n2. Upload firmware image.\n3. Reboot switches sequentially.\n4. Verify connectivity.",
+        "risk_impact_analysis": "Low impact expected as switches are redundant, but there could be minor packet loss during failover.",
+        "backout_plan": "Revert to previous firmware version 12.4.4.",
+        "test_plan": "Run standard network diagnostics and verify all core services are reachable.",
         "type": "normal",
+        "priority": "3",
+        "risk": "3",
         "start_date": now_str
     })
     
@@ -185,6 +250,9 @@ def main():
     ensure_minimum_active_changes(3)
     
     reassign_incidents()
+    
+    # 6. Display Running Changes
+    print_running_changes()
 
 if __name__ == '__main__':
     main()

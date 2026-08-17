@@ -23,7 +23,7 @@ jobs:
         run: |
           if [ -f servicenow_creator/requirements.txt ]; then pip install -r servicenow_creator/requirements.txt; fi
 
-      - name: Run ServiceNow Script
+      - name: Run ServiceNow Script and Show Running Changes
         env:
           SN_INSTANCE: ${{ secrets.SN_INSTANCE }}
           SN_USERNAME: ${{ secrets.SN_USERNAME }}
