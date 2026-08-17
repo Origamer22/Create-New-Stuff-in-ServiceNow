@@ -36,7 +36,16 @@ def update_record(table, sys_id, payload):
     response = requests.put(url, auth=AUTH, headers=HEADERS, json=payload)
     if response.status_code == 200:
         return response.json().get('result')
-    print(f"Failed to update {table} {sys_id}: {response.text}")
+    
+    # Try to parse a cleaner error message
+    try:
+        err_detail = response.json().get('error', {}).get('detail', response.text)
+        # Clean up newlines in error details for single-line logging
+        err_detail = err_detail.replace('\n', ' ').replace('\t', '')
+        print(f"Failed to update {table} {sys_id}: {err_detail}")
+    except:
+        print(f"Failed to update {table} {sys_id}: {response.text}")
+        
     return None
 
 def delete_record(table, sys_id):
@@ -116,6 +125,7 @@ def close_incidents():
         payload = {
             "state": "7", # Closed
             "close_code": "Solved (Permanently)",
+            "resolution_code": "Solved (Permanently)", # Some instances use this field name
             "close_notes": "Auto-closed by script"
         }
         if update_record("incident", inc_id, payload):
