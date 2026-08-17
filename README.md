@@ -1,11 +1,18 @@
 # ServiceNow Creator
 
-`servicenow_creator` is a Python automation script that programmatically interacts with your ServiceNow instance via its REST API. It is designed to be run as a daily scheduled GitHub Action to automatically generate test records or routine tickets in your ServiceNow environment.
+`servicenow_creator` is a Python automation script that programmatically interacts with your ServiceNow instance via its REST API. It is designed to be run as a daily scheduled GitHub Action to automatically generate test records or routine tickets in your ServiceNow environment, as well as progress existing ones through their lifecycle.
 
 ## Features
 
-- **Automated Record Creation**: Automatically creates incidents, problems, and normal change requests on a schedule.
-- **Change Request Management**: Queries for planned changes whose start date has arrived and automatically updates their state to "Implement" (-1).
+The `create_records.py` script automatically performs the following actions:
+- **Clean up existing records**: 
+  - Closes active Change Requests that are in the "Implement" or "Review" state.
+  - Closes active Incidents with a "Solved (Permanently)" code.
+- **Generate new records**: 
+  - Creates a new Incident, Problem, and normal Change Request.
+- **Progress record states**: 
+  - Starts planned Change Requests (moves Scheduled changes to Implement if their start date is reached).
+  - Reassigns active Incidents to a random active user group.
 - **GitHub Actions Integration**: Designed to be run effortlessly via GitHub Actions, either on a daily cron schedule or manually via `workflow_dispatch`.
 
 ## Setup
@@ -16,9 +23,9 @@
 - `requests` library
 - A ServiceNow instance (developer or enterprise) with API access
 
-### Configuration
+### ServiceNow Credentials Configuration
 
-The script uses environment variables to authenticate with your ServiceNow instance. If you are using GitHub Actions, you should configure these as repository secrets (`Settings` > `Secrets and variables` > `Actions`).
+The script uses environment variables to authenticate with your ServiceNow instance. 
 
 | Variable Name | Description | Example |
 |---|---|---|
@@ -30,15 +37,39 @@ The script uses environment variables to authenticate with your ServiceNow insta
 
 ## Usage
 
+### GitHub Actions (Recommended)
+
+This repository includes a GitHub Actions workflow (`.github/workflows/servicenow_creator.yml`) that runs the script automatically at midnight every day. You can also trigger it manually.
+
+**Setting up GitHub Actions:**
+
+1. Navigate to your GitHub repository on the web.
+2. Go to **Settings** > **Secrets and variables** > **Actions**.
+3. Under the "Repository secrets" section, click **New repository secret**.
+4. Add the following three secrets matching the configuration above:
+   - Name: `SN_INSTANCE` | Value: Your instance name (e.g., `dev12345`)
+   - Name: `SN_USERNAME` | Value: Your API username
+   - Name: `SN_PASSWORD` | Value: Your API user's password
+5. Navigate to the **Actions** tab in your repository.
+6. If prompted, click the button to **Enable workflows**.
+7. In the left sidebar, click on the **ServiceNow Creator** workflow.
+8. To run it immediately, click the **Run workflow** dropdown on the right side and click the **Run workflow** button.
+
+**Checking if it works:**
+
+1. **Check GitHub Logs**: After triggering the workflow, click on the workflow run in the Actions tab. Click on the `run-scripts` job to view the console output. You should see logs like `Creating Incidents...`, `Created incident: INC0012345`, etc.
+2. **Verify in ServiceNow**: Log into your ServiceNow instance and navigate to the respective lists (e.g., type `incident.list`, `problem.list`, or `change_request.list` in the filter navigator). Verify that new records have been created, or existing records have been closed/reassigned at the exact time the script was run.
+
 ### Running Locally
 
-To test the script locally, ensure you have the `requests` library installed:
+To test the script locally on your machine:
 
-```bash
-pip install -r requirements.txt
-```
-
-Set the required environment variables in your terminal and run the script:
+1. Navigate to the `servicenow_creator` folder.
+2. Install the requirements:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Set the required environment variables in your terminal and run the script:
 
 **Windows (PowerShell):**
 ```powershell
@@ -55,7 +86,3 @@ export SN_USERNAME="admin"
 export SN_PASSWORD="password"
 python create_records.py
 ```
-
-### GitHub Actions
-
-This repository includes a GitHub Actions workflow (`.github/workflows/servicenow_creator.yml`) that runs the script automatically at midnight every day. You can also trigger it manually from the "Actions" tab in GitHub.
