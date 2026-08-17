@@ -81,7 +81,11 @@ def end_active_changes():
     print("Checking for active changes to close...")
     # Query changes in Implement (-1) or Review (0)
     changes = get_records("change_request", "active=true^stateIN-1,0")
-    for chg in changes:
+    
+    # Close changes probabilistically so some run longer and some shorter
+    changes_to_close = [chg for chg in changes if random.choice([True, False])]
+    
+    for chg in changes_to_close:
         chg_id = chg['sys_id']
         chg_num = chg['number']
         print(f"Closing change {chg_num}...")
@@ -92,6 +96,26 @@ def end_active_changes():
         }
         if update_record("change_request", chg_id, payload):
             print(f"Successfully closed change {chg_num}")
+
+def ensure_minimum_active_changes(min_count=3):
+    print(f"Ensuring at least {min_count} active changes in Implement/Review state...")
+    changes = get_records("change_request", "active=true^stateIN-1,0")
+    current_count = len(changes)
+    print(f"Currently have {current_count} active changes.")
+    
+    if current_count < min_count:
+        needed = min_count - current_count
+        print(f"Need to create {needed} more change(s) to reach minimum.")
+        for _ in range(needed):
+            now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            chg = create_record("change_request", {
+                "short_description": "Auto-generated active change request",
+                "type": "normal",
+                "start_date": now_str
+            })
+            if chg:
+                # Force state to Implement (-1) so they show up as running
+                update_record("change_request", chg['sys_id'], {"state": "-1"})
 
 def reassign_incidents():
     print("Checking for active incidents to reassign...")
@@ -156,6 +180,9 @@ def main():
     # 4. Progress states for active records
     print("Checking for planned changes to start...")
     start_planned_changes()
+    
+    # 5. Ensure we always have at least 3 running changes
+    ensure_minimum_active_changes(3)
     
     reassign_incidents()
 
