@@ -1,80 +1,75 @@
-# We stand with Israel 🇮🇱
+# ServiceNow Creator Automation
 
-# ServiceNow Creator
+ServiceNow Creator is a Python-based automation tool that acts as a bot simulating an active, living IT Service Management (ITSM) environment within a ServiceNow instance. Designed to be run on a schedule using GitHub Actions, it autonomously interacts with the ServiceNow REST API to create, update, progress, and resolve various ITSM records such as Change Requests, Incidents, and Problems.
 
-ServiceNow Creator is an automated workflow simulation bot that interacts with the ServiceNow REST API. It is designed to run on a schedule (using GitHub Actions) to simulate an active, living ServiceNow environment. It autonomously creates, updates, progresses, and resolves Change Requests, Incidents, and Problems.
+## 🚀 Key Features
 
-## 🚀 Features
+- **Automated Change Request Lifecycle**: Active change requests are automatically progressed through the standard ITIL pipeline (New → Assess → Authorize → Scheduled → Implement → Review → Closed). Transitions occur realistically based on random delays and record age.
+- **Pipeline Monitoring & Enforcement**: Ensures there are *always* at least 3 active Change Requests in the **Implement** state. If the number drops below this threshold, it automatically creates urgent mock changes straight into the Implement state. It also maintains a healthy pipeline of active normal changes.
+- **Incident & Problem Generation**: Sporadically creates new mock incidents and problems to populate the ServiceNow instance.
+- **Helpdesk Simulation**: To simulate active human work, the script randomly reassigns about 20% of active incidents to different user groups, and automatically closes older incidents with proper resolution notes.
+- **Automated Approvals**: Pending approvals for change requests entering the "Authorize" state are automatically approved to maintain workflow velocity.
+- **Geographic Schedule Awareness**: Detects the Israeli weekend (Friday 13:00 to Saturday 21:00 IST) using timezone-aware logic and pauses execution during this time.
+- **Continuous GitHub Actions Workflow**: Runs every 2 hours via a GitHub Actions cron job. It features an automated "Keepalive" mechanism that pushes an empty commit if the repository is inactive for 50 days, preventing GitHub from disabling the workflow. Additionally, it writes summaries of running changes to the GitHub Actions workflow run summary page.
 
-- **Change Request Lifecycle Management**: Automatically progresses active change requests through standard ITIL states (New → Assess → Authorize → Scheduled → Implement → Review → Closed) based on realistic time delays.
-- **Minimum State Enforcement**: Continuously monitors the pipeline and ensures there are *always* at least 3 active Change Requests specifically in the **Implement** state, automatically generating urgent changes to fill the gap if needed.
-- **Incident & Problem Automation**: Sporadically creates new mock incidents and problems. It also randomly reassigns 20% of active incidents and automatically resolves older incidents to simulate a living helpdesk.
-- **Approval Automation**: Automatically approves any pending approvals for changes currently in the "Authorize" state.
-- **Weekend Awareness**: Automatically pauses execution during the Israeli weekend (Friday 13:00 to Saturday 21:00 IST) using timezone-aware logic.
-- **GitHub Actions Integration**: Runs on a 2-hour cron schedule. It includes a built-in "Keepalive" commit mechanism to prevent GitHub from disabling the scheduled workflow after 60 days of repository inactivity, and outputs running change summaries directly to the GitHub Actions workflow run summary.
+---
 
-## 📁 Repository Structure
+## 📁 Repository Structure Breakdown
 
-- `servicenow_creator/create_records.py`: The core Python engine that handles all ServiceNow API interactions and state machine logic.
-- `servicenow_creator/requirements.txt`: Python dependencies (`requests` for API calls, `pytz` for timezone handling).
-- `.github/workflows/servicenow_creator.yml`: The GitHub Actions workflow configuration.
+The repository consists of the following critical files:
+
+- **`servicenow_creator/create_records.py`**: The core execution script. It contains the logic to connect to the ServiceNow REST API (`/api/now/table`), parse the current state of incidents/problems/changes, evaluate aging based on `sys_created_on`, and execute REST payload updates (POST/PUT/DELETE).
+- **`servicenow_creator/requirements.txt`**: The Python environment dependencies.
+  - `requests==2.31.0`: Used for making REST API calls to ServiceNow.
+  - `pytz==2024.1`: Used to handle timezone conversions to implement the weekend suspension feature.
+- **`.github/workflows/servicenow_creator.yml`**: The GitHub Actions CI/CD configuration file. It dictates the environment (Ubuntu), Python setup, secrets management, script execution, and keep-alive strategy.
 
 ---
 
 ## 🛠️ Step-by-Step Setup Instructions
 
-Follow these detailed steps to deploy this automation to your own GitHub repository and connect it to your ServiceNow instance.
+You can run this bot locally for testing, or deploy it to GitHub Actions to continuously simulate traffic to your ServiceNow instance.
 
-### Step 1: Fork or Clone the Repository
-To run the GitHub Actions workflow, you need this code in your own GitHub account.
-1. Click the **Fork** button at the top right of this repository to create a copy in your GitHub account.
-2. (Optional) Clone it to your local machine if you wish to run it locally or make modifications:
-   ```bash
-   git clone https://github.com/YOUR-USERNAME/Create-New-Stuff-in-ServiceNow.git
-   cd Create-New-Stuff-in-ServiceNow
-   ```
-
-### Step 2: Prepare ServiceNow Credentials
-The script requires a ServiceNow user account with sufficient privileges to read, create, update, and delete records in the following tables:
+### Prerequisites
+You will need a ServiceNow developer instance (or sandbox) and a user account with REST API access and privileges to read, create, update, and delete records in the following tables:
 - `change_request`
 - `incident`
 - `problem`
 - `sysapproval_approver`
 - `sys_user_group`
 
-Ensure you have the instance URL (e.g., `dev12345`), the username, and the password ready.
+### Method 1: Continuous Deployment via GitHub Actions (Recommended)
 
-### Step 3: Configure GitHub Secrets
-You must provide the ServiceNow credentials to GitHub Actions securely.
-1. Go to your forked repository on GitHub.
-2. Click on **Settings** in the top repository menu.
-3. In the left sidebar, navigate to **Secrets and variables** > **Actions**.
-4. Click the **New repository secret** button three times to add the following secrets:
-   - **Name**: `SN_INSTANCE`
-     **Secret**: Your instance ID or URL (e.g., `dev12345` or `dev12345.service-now.com`). The script will automatically parse the URL.
-   - **Name**: `SN_USERNAME`
-     **Secret**: Your ServiceNow API username.
-   - **Name**: `SN_PASSWORD`
-     **Secret**: Your ServiceNow API password.
+1. **Fork or Clone the Repository**: Click the **Fork** button on the top right of this repository to create your own copy on GitHub.
+2. **Configure GitHub Secrets**:
+   - In your forked GitHub repository, navigate to **Settings** > **Secrets and variables** > **Actions**.
+   - Add the following three "New repository secrets":
+     - `SN_INSTANCE`: Your ServiceNow instance URL or ID (e.g., `dev12345` or `https://dev12345.service-now.com`). The script will intelligently parse it.
+     - `SN_USERNAME`: The username of your ServiceNow API account.
+     - `SN_PASSWORD`: The password of your ServiceNow API account.
+3. **Enable GitHub Actions**:
+   - GitHub disables workflows in forked repositories by default for security. 
+   - Go to the **Actions** tab in your repository and click **"I understand my workflows, go ahead and enable them"**.
+4. **Trigger the Workflow**:
+   - The script is scheduled to automatically run every 2 hours.
+   - To trigger an immediate run, go to the Actions tab, select **ServiceNow Creator** from the left-hand menu, and click the **Run workflow** dropdown to execute it.
 
-### Step 4: Enable and Trigger GitHub Actions
-GitHub disables workflows in forked repositories by default.
-1. Go to the **Actions** tab in your GitHub repository.
-2. Click **I understand my workflows, go ahead and enable them**.
-3. The workflow is scheduled to run automatically every 2 hours (`0 */2 * * *`). 
-4. To run it immediately and test your connection, select **ServiceNow Creator** from the left sidebar and click **Run workflow**.
+### Method 2: Local Development & Testing
 
-### Step 5: Local Development & Testing (Optional)
-If you want to test the script manually on your local machine before relying on GitHub Actions:
+If you want to run or debug the script locally:
 
-1. **Install Python 3.x** on your system.
-2. **Install dependencies**:
-   Navigate to the project root and install the required packages:
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/YOUR-USERNAME/Create-New-Stuff-in-ServiceNow.git
+   cd Create-New-Stuff-in-ServiceNow
+   ```
+2. **Install Python & Dependencies**:
+   Ensure you have Python 3.x installed. Then, install the required packages using pip:
    ```bash
    pip install -r servicenow_creator/requirements.txt
    ```
 3. **Set Environment Variables**:
-   Export your credentials to your local terminal environment.
+   Export your credentials so the script can authenticate with ServiceNow.
    
    *On Windows (PowerShell):*
    ```powershell
@@ -82,14 +77,18 @@ If you want to test the script manually on your local machine before relying on 
    $env:SN_USERNAME="your_username"
    $env:SN_PASSWORD="your_password"
    ```
-   *On Mac/Linux (Bash):*
+   *On macOS / Linux (Bash/Zsh):*
    ```bash
    export SN_INSTANCE="dev12345"
    export SN_USERNAME="your_username"
    export SN_PASSWORD="your_password"
    ```
-4. **Execute the script**:
+4. **Run the Script**:
+   Execute the core Python script to initiate one lifecycle cycle.
    ```bash
    python servicenow_creator/create_records.py
    ```
-   You should see terminal output detailing which records are being progressed, created, or closed.
+   The terminal will output logs detailing which records were discovered, created, transitioned, or closed.
+
+---
+*Note: This script will skip its execution block automatically if run between Friday 13:00 and Saturday 21:00 (Israel Standard Time).*
