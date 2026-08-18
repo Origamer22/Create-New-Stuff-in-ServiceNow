@@ -163,7 +163,7 @@ def ensure_minimum_active_changes(min_count=3):
                 "backout_plan": "Restore from snapshot.",
                 "test_plan": "Run vulnerability scan.",
                 "type": "Normal",
-                "state": "-1", # Implement
+                "state": "-5", # Create in New, then fast-forward
                 "priority": "3",
                 "risk": "3", # Moderate
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -179,13 +179,30 @@ def ensure_minimum_active_changes(min_count=3):
                 "unauthorized": "false",
                 "upon_approval": "Proceed to Next Task",
                 "upon_reject": "Cancel all future Tasks",
-                "work_notes": "Change request auto-created in Implement state to maintain minimum active count.",
-                "comments": "This change was opened by automation directly into Implement phase.",
+                "work_notes": "Change request auto-created to maintain minimum active count.",
+                "comments": "This change was opened by automation.",
                 "escalation": "Normal",
                 "conflict_status": "Not Run",
                 "phase": "Requested",
                 "phase_state": "Open"
             })
+
+            if chg:
+                chg_id = chg.get('sys_id')
+                if chg_id:
+                    # Fast-forward to Implement
+                    groups = get_records("sys_user_group", "active=true", limit=10)
+                    ag_id = random.choice(groups)['sys_id'] if groups else ""
+                    
+                    payload_assess = {"state": "-4"}
+                    if ag_id:
+                        payload_assess["assignment_group"] = ag_id
+                        
+                    update_record("change_request", chg_id, payload_assess, silent=True) # Assess
+                    update_record("change_request", chg_id, {"state": "-3"}, silent=True) # Authorize
+                    approve_all_pending(chg_id)
+                    update_record("change_request", chg_id, {"state": "-2"}, silent=True) # Scheduled
+                    update_record("change_request", chg_id, {"state": "-1", "work_notes": "Starting implementation."}, silent=True) # Implement
 
     # Let's ensure we have enough total active changes in pipeline to reach the states
     pipeline_changes = get_records("change_request", "active=true")
