@@ -23,11 +23,9 @@ Deploy this automation to your own GitHub repository and connect it to your Serv
 
 ### Step 1: Fork or Clone the Repository
 To utilize the automated GitHub Actions workflow, you must have this code in your own repository.
-1. Click the **Fork** button at the top right of this repository to create a copy under your own GitHub account.
-2. (Optional) Clone it locally:
-   ```bash
-   git clone https://github.com/YOUR-USERNAME/Create-New-Stuff-in-ServiceNow.git
-   cd Create-New-Stuff-in-ServiceNow
+
+Click the **Fork** button at the top right of this repository to create a copy under your own GitHub account.
+
    ```
 
 ### Step 2: Prepare ServiceNow Credentials
