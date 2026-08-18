@@ -149,6 +149,44 @@ def ensure_minimum_active_changes(min_count=3):
     current_count = len(changes)
     print(f"Currently have {current_count} active changes in Implement/Review.")
     
+    if current_count < min_count:
+        needed_active = min_count - current_count
+        print(f"Need to create {needed_active} more change(s) directly in Implement state.")
+        for _ in range(needed_active):
+            now = datetime.now(timezone.utc)
+            chg = create_record("change_request", {
+                "short_description": "Auto-generated change: Urgent security patch",
+                "description": "Urgent security patching to address zero-day vulnerability.",
+                "justification": "Required to maintain security posture and prevent unauthorized access.",
+                "implementation_plan": "1. Snapshot servers.\n2. Apply patches.\n3. Restart and verify.",
+                "risk_impact_analysis": "Medium risk.",
+                "backout_plan": "Restore from snapshot.",
+                "test_plan": "Run vulnerability scan.",
+                "type": "Normal",
+                "state": "-1", # Implement
+                "priority": "3",
+                "risk": "3", # Moderate
+                "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+                "category": "Other",
+                "contact_type": "Phone",
+                "impact": "3",
+                "urgency": "3",
+                "scope": "Medium",
+                "cab_required": "false",
+                "outside_maintenance_schedule": "false",
+                "production_system": "false",
+                "unauthorized": "false",
+                "upon_approval": "Proceed to Next Task",
+                "upon_reject": "Cancel all future Tasks",
+                "work_notes": "Change request auto-created in Implement state to maintain minimum active count.",
+                "comments": "This change was opened by automation directly into Implement phase.",
+                "escalation": "Normal",
+                "conflict_status": "Not Run",
+                "phase": "Requested",
+                "phase_state": "Open"
+            })
+
     # Let's ensure we have enough total active changes in pipeline to reach the states
     pipeline_changes = get_records("change_request", "active=true")
     if len(pipeline_changes) < min_count * 2: # Keep a healthy pipeline
