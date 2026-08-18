@@ -145,9 +145,9 @@ def process_all_changes():
 
 def ensure_minimum_active_changes(min_count=3):
     print(f"\n--- Ensuring Minimum Active Changes ---")
-    changes = get_records("change_request", "active=true^stateIN-1,0")
-    current_count = len(changes)
-    print(f"Currently have {current_count} active changes in Implement/Review.")
+    implement_changes = get_records("change_request", "active=true^state=-1")
+    current_count = len(implement_changes)
+    print(f"Currently have {current_count} active changes in Implement.")
     
     if current_count < min_count:
         needed_active = min_count - current_count
