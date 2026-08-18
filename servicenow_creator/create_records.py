@@ -31,18 +31,19 @@ def get_records(table, query, limit=None):
     print(f"Failed to fetch {table}: {response.text}")
     return []
 
-def update_record(table, sys_id, payload):
+def update_record(table, sys_id, payload, silent=False):
     url = f"{BASE_URL}/{table}/{sys_id}"
     response = requests.put(url, auth=AUTH, headers=HEADERS, json=payload)
     if response.status_code == 200:
         return response.json().get('result')
     
-    try:
-        err_detail = response.json().get('error', {}).get('detail', response.text)
-        err_detail = err_detail.replace('\n', ' ').replace('\t', '')
-        print(f"Failed to update {table} {sys_id}: {err_detail}")
-    except:
-        print(f"Failed to update {table} {sys_id}: {response.text}")
+    if not silent:
+        try:
+            err_detail = response.json().get('error', {}).get('detail', response.text)
+            err_detail = err_detail.replace('\n', ' ').replace('\t', '')
+            print(f"Failed to update {table} {sys_id}: {err_detail}")
+        except:
+            print(f"Failed to update {table} {sys_id}: {response.text}")
         
     return None
 
@@ -76,7 +77,7 @@ def get_age_hours(sys_created_on_str):
 def approve_all_pending(sys_id):
     approvals = get_records("sysapproval_approver", f"sysapproval={sys_id}^state=requested")
     for app in approvals:
-        update_record("sysapproval_approver", app['sys_id'], {"state": "approved"})
+        update_record("sysapproval_approver", app['sys_id'], {"state": "approved"}, silent=True)
 
 def progress_change(chg):
     chg_id = chg['sys_id']
@@ -100,23 +101,23 @@ def progress_change(chg):
             groups = get_records("sys_user_group", "active=true", limit=10)
             if groups:
                 payload["assignment_group"] = random.choice(groups)['sys_id']
-        update_record("change_request", chg_id, payload)
+        update_record("change_request", chg_id, payload, silent=True)
         
     elif state == -4: # Assess -> Authorize
-        update_record("change_request", chg_id, {"state": "-3"})
+        update_record("change_request", chg_id, {"state": "-3"}, silent=True)
         
     elif state == -3: # Authorize -> Scheduled
         approve_all_pending(chg_id)
-        update_record("change_request", chg_id, {"state": "-2"})
+        update_record("change_request", chg_id, {"state": "-2"}, silent=True)
         
     elif state == -2: # Scheduled -> Implement
-        update_record("change_request", chg_id, {"state": "-1", "work_notes": "Starting implementation."})
+        update_record("change_request", chg_id, {"state": "-1", "work_notes": "Starting implementation."}, silent=True)
         
     elif state == -1: # Implement -> Review
         # Random duration between 2 to 24 hours
         threshold = random.randint(2, 24)
         if age_hours > threshold:
-            update_record("change_request", chg_id, {"state": "0", "work_notes": "Implementation complete. Moving to review."})
+            update_record("change_request", chg_id, {"state": "0", "work_notes": "Implementation complete. Moving to review."}, silent=True)
             print(f"Moved {chg_num} to Review (age {age_hours:.1f}h)")
         else:
             print(f"Keeping {chg_num} in Implement (age {age_hours:.1f}h, threshold {threshold}h)")
@@ -130,7 +131,7 @@ def progress_change(chg):
                 "close_code": "successful",
                 "close_notes": "Auto-closed by script after review period."
             }
-            update_record("change_request", chg_id, payload)
+            update_record("change_request", chg_id, payload, silent=True)
             print(f"Closed {chg_num} (age {age_hours:.1f}h)")
         else:
             print(f"Keeping {chg_num} in Review (age {age_hours:.1f}h, threshold {threshold}h)")
@@ -163,11 +164,28 @@ def ensure_minimum_active_changes(min_count=3):
                 "risk_impact_analysis": "Low risk.",
                 "backout_plan": "Restore from backups.",
                 "test_plan": "Run automated health check scripts.",
-                "type": "normal",
+                "type": "Normal",
                 "priority": "4",
-                "risk": "4",
+                "risk": "4", # Moderate
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
-                "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S")
+                "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+                "category": "Other",
+                "contact_type": "Phone",
+                "impact": "3",
+                "urgency": "3",
+                "scope": "Medium",
+                "cab_required": "false",
+                "outside_maintenance_schedule": "false",
+                "production_system": "false",
+                "unauthorized": "false",
+                "upon_approval": "Proceed to Next Task",
+                "upon_reject": "Cancel all future Tasks",
+                "work_notes": "Change request auto-created.",
+                "comments": "This change was opened by automation.",
+                "escalation": "Normal",
+                "conflict_status": "Not Run",
+                "phase": "Requested",
+                "phase_state": "Open"
             })
 
 def reassign_incidents():
@@ -184,7 +202,7 @@ def reassign_incidents():
             inc_num = inc['number']
             group = random.choice(groups)
             print(f"Reassigning incident {inc_num} to {group.get('name')}...")
-            update_record("incident", inc_id, {"assignment_group": group['sys_id']})
+            update_record("incident", inc_id, {"assignment_group": group['sys_id']}, silent=True)
 
 def process_incidents():
     print("\n--- Processing Incidents ---")
@@ -203,10 +221,11 @@ def process_incidents():
             payload = {
                 "state": "7", # Closed
                 "close_code": "Solved (Permanently)",
-                "resolution_code": "Solved (Permanently)",
-                "close_notes": "Auto-closed by script after investigation."
+                "resolution_code": "Software", # Using a more standard SNOW resolution code
+                "close_notes": "Auto-closed by script after investigation.",
+                "resolution_notes": "Auto-resolved by script."
             }
-            update_record("incident", inc_id, payload)
+            update_record("incident", inc_id, payload, silent=True)
         else:
             print(f"Keeping incident {inc_num} open (age: {age_hours:.1f}h).")
 
@@ -251,7 +270,16 @@ def create_daily_records():
             "description": "Users report slow response times in the main application portal.",
             "urgency": "2",
             "impact": "2",
-            "category": "software"
+            "priority": "3",
+            "category": "software",
+            "subcategory": "os",
+            "contact_type": "Phone",
+            "state": "1",
+            "escalation": "Normal",
+            "work_notes": "Incident auto-created to track performance issues.",
+            "comments": "Automated incident logged.",
+            "notify": "1",
+            "knowledge": "false"
         })
     
     if random.random() < 0.2:
@@ -259,7 +287,14 @@ def create_daily_records():
             "short_description": "Auto-generated problem: Recurring application latency",
             "description": "Multiple incidents reported for app performance.",
             "urgency": "2",
-            "impact": "2"
+            "impact": "2",
+            "priority": "3",
+            "state": "1",
+            "category": "software",
+            "subcategory": "os",
+            "work_notes": "Problem auto-created.",
+            "comments": "Tracking recurring latency across systems.",
+            "knowledge": "false"
         })
 
 def main():
