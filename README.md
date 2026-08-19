@@ -26,7 +26,6 @@ To utilize the automated GitHub Actions workflow, you must have this code in you
 
 Click the **Fork** button at the top right of this repository to create a copy under your own GitHub account.
 
-   ```
 
 ### Step 2: Prepare ServiceNow Credentials
 The automation requires a ServiceNow user account with sufficient read/write/delete permissions for the following tables:
