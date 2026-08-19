@@ -515,10 +515,10 @@ def backfill_all_records():
     
     for table, payload in [("change_request", chg_payload), ("incident", inc_payload), ("problem", prb_payload)]:
         # Let's get up to 200 records to prevent script timeout, focusing on the ones that are likely empty.
-        records = get_records(table, "sys_created_onANYTHING", limit=200)
+        records = get_records(table, "sys_created_onISNOTEMPTY", limit=200)
         print(f"Backfilling {len(records)} records for {table}...")
         for r in records:
-            update_record(table, r['sys_id'], payload, silent=True)
+            update_record(table, r['sys_id'], payload, silent=False)
 
 def main():
     # Check for Israel weekend (Friday 13:00 to Saturday 21:00)
