@@ -361,6 +361,7 @@ def print_running_changes():
             f.write(summary)
 
 def create_daily_records():
+    now = datetime.now(timezone.utc)
     # Only create new records randomly so we don't flood if it runs every 2 hours
     if random.random() < 0.5:
         print("\n--- Creating New Records ---")
@@ -378,7 +379,14 @@ def create_daily_records():
             "work_notes": "Incident auto-created to track performance issues.",
             "comments": "Automated incident logged.",
             "notify": "1",
-            "knowledge": "false"
+            "knowledge": "false",
+            "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
+            "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+            "approval": "Approved",
+            "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "made_sla": "true",
+            "route_reason": "Standard routing"
         })
     
     if random.random() < 0.2:
@@ -393,8 +401,91 @@ def create_daily_records():
             "subcategory": "os",
             "work_notes": "Problem auto-created.",
             "comments": "Tracking recurring latency across systems.",
-            "knowledge": "false"
+            "knowledge": "false",
+            "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
+            "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+            "approval": "Approved",
+            "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "made_sla": "true",
+            "route_reason": "Standard routing",
+            "escalation": "Normal",
+            "known_error": "false",
+            "contact_type": "Phone"
         })
+
+def backfill_all_records():
+    print("\n--- Backfilling All Existing Records ---")
+    now = datetime.now(timezone.utc)
+    
+    chg_payload = {
+        "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+        "cab_date_time": (now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+        "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
+        "requested_by_date": (now - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+        "review_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+        "approval": "Approved",
+        "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "cab_recommendation": "Approved by CAB.",
+        "change_plan": "Standard change plan.",
+        "conflict_last_run": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "reason": "Routine update",
+        "review_comments": "Looks good.",
+        "review_status": "Reviewed",
+        "route_reason": "Standard routing",
+        "user_input": "Proceed with change.",
+        "knowledge": "false",
+        "made_sla": "true",
+        "on_hold": "false",
+        "on_hold_reason": "Not on hold",
+        "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+        "conflict_status": "Not Run",
+        "unauthorized": "false",
+        "production_system": "false",
+        "outside_maintenance_schedule": "false",
+        "cab_required": "false"
+    }
+    
+    inc_payload = {
+        "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
+        "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+        "approval": "Approved",
+        "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "knowledge": "false",
+        "made_sla": "true",
+        "route_reason": "Standard routing",
+        "escalation": "Normal",
+        "notify": "1",
+        "contact_type": "Phone",
+        "category": "software",
+        "subcategory": "os"
+    }
+    
+    prb_payload = {
+        "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
+        "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+        "approval": "Approved",
+        "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "knowledge": "false",
+        "made_sla": "true",
+        "route_reason": "Standard routing",
+        "escalation": "Normal",
+        "known_error": "false",
+        "contact_type": "Phone",
+        "category": "software",
+        "subcategory": "os"
+    }
+    
+    for table, payload in [("change_request", chg_payload), ("incident", inc_payload), ("problem", prb_payload)]:
+        # Let's get up to 200 records to prevent script timeout, focusing on the ones that are likely empty.
+        records = get_records(table, "sys_created_onANYTHING", limit=200)
+        print(f"Backfilling {len(records)} records for {table}...")
+        for r in records:
+            update_record(table, r['sys_id'], payload, silent=True)
 
 def main():
     # Check for Israel weekend (Friday 13:00 to Saturday 21:00)
@@ -408,6 +499,9 @@ def main():
         return
 
     print("Starting ServiceNow Scheduled Tasks...")
+    
+    # 0. Backfill all existing records with full fields
+    backfill_all_records()
     
     # 1. Process existing changes through their lifecycle
     process_all_changes()
