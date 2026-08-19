@@ -168,6 +168,13 @@ def ensure_minimum_active_changes(min_count=3):
                 "risk": "3", # Moderate
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+                "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+                "cab_date_time": (now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+                "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
+                "requested_by_date": (now - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+                "review_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
                 "category": "Other",
                 "contact_type": "Phone",
                 "impact": "3",
@@ -184,7 +191,22 @@ def ensure_minimum_active_changes(min_count=3):
                 "escalation": "Normal",
                 "conflict_status": "Not Run",
                 "phase": "Requested",
-                "phase_state": "Open"
+                "phase_state": "Open",
+                "approval": "Approved",
+                "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "cab_recommendation": "Approved by CAB.",
+                "change_plan": "Standard change plan.",
+                "conflict_last_run": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "reason": "Routine update",
+                "review_comments": "Looks good.",
+                "review_status": "Reviewed",
+                "route_reason": "Standard routing",
+                "user_input": "Proceed with change.",
+                "knowledge": "false",
+                "made_sla": "true",
+                "on_hold": "false",
+                "on_hold_reason": "Not on hold",
+                "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
             })
 
             if chg:
@@ -224,6 +246,13 @@ def ensure_minimum_active_changes(min_count=3):
                 "risk": "4", # Moderate
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+                "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+                "cab_date_time": (now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+                "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
+                "requested_by_date": (now - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+                "review_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
                 "category": "Other",
                 "contact_type": "Phone",
                 "impact": "3",
@@ -240,7 +269,22 @@ def ensure_minimum_active_changes(min_count=3):
                 "escalation": "Normal",
                 "conflict_status": "Not Run",
                 "phase": "Requested",
-                "phase_state": "Open"
+                "phase_state": "Open",
+                "approval": "Approved",
+                "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "cab_recommendation": "Approved by CAB.",
+                "change_plan": "Routine maintenance change plan.",
+                "conflict_last_run": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "reason": "Routine update",
+                "review_comments": "Looks good.",
+                "review_status": "Reviewed",
+                "route_reason": "Standard routing",
+                "user_input": "Proceed with change.",
+                "knowledge": "false",
+                "made_sla": "true",
+                "on_hold": "false",
+                "on_hold_reason": "Not on hold",
+                "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
             })
 
 def reassign_incidents():
