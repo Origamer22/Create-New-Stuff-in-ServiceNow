@@ -382,11 +382,18 @@ def create_daily_records():
             "knowledge": "false",
             "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
             "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+            "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
             "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
             "approval": "Approved",
             "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
             "made_sla": "true",
-            "route_reason": "Standard routing"
+            "route_reason": "Standard routing",
+            "time_worked": "1970-01-01 01:00:00",
+            "calendar_duration": "1970-01-01 02:00:00",
+            "business_duration": "1970-01-01 02:00:00"
         })
     
     if random.random() < 0.2:
@@ -404,6 +411,10 @@ def create_daily_records():
             "knowledge": "false",
             "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
             "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+            "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
             "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
             "approval": "Approved",
             "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -411,7 +422,10 @@ def create_daily_records():
             "route_reason": "Standard routing",
             "escalation": "Normal",
             "known_error": "false",
-            "contact_type": "Phone"
+            "contact_type": "Phone",
+            "time_worked": "1970-01-01 01:00:00",
+            "calendar_duration": "1970-01-01 02:00:00",
+            "business_duration": "1970-01-01 02:00:00"
         })
 
 def backfill_all_records():
@@ -419,6 +433,8 @@ def backfill_all_records():
     now = datetime.now(timezone.utc)
     
     chg_payload = {
+        "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
         "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
         "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
@@ -445,12 +461,19 @@ def backfill_all_records():
         "unauthorized": "false",
         "production_system": "false",
         "outside_maintenance_schedule": "false",
-        "cab_required": "false"
+        "cab_required": "false",
+        "time_worked": "1970-01-01 01:00:00",
+        "calendar_duration": "1970-01-01 02:00:00",
+        "business_duration": "1970-01-01 02:00:00"
     }
     
     inc_payload = {
         "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
         "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+        "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
         "approval": "Approved",
         "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -461,12 +484,19 @@ def backfill_all_records():
         "notify": "1",
         "contact_type": "Phone",
         "category": "software",
-        "subcategory": "os"
+        "subcategory": "os",
+        "time_worked": "1970-01-01 01:00:00",
+        "calendar_duration": "1970-01-01 02:00:00",
+        "business_duration": "1970-01-01 02:00:00"
     }
     
     prb_payload = {
         "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
         "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
+        "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
         "approval": "Approved",
         "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -477,7 +507,10 @@ def backfill_all_records():
         "known_error": "false",
         "contact_type": "Phone",
         "category": "software",
-        "subcategory": "os"
+        "subcategory": "os",
+        "time_worked": "1970-01-01 01:00:00",
+        "calendar_duration": "1970-01-01 02:00:00",
+        "business_duration": "1970-01-01 02:00:00"
     }
     
     for table, payload in [("change_request", chg_payload), ("incident", inc_payload), ("problem", prb_payload)]:
