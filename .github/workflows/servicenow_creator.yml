@@ -2,7 +2,12 @@ name: ServiceNow Creator
 
 on:
   schedule:
-    - cron: '0 */2 * * *' # Run every 2 hours
+    # Runs every 2 hours on Sun-Thu
+    - cron: '0 */2 * * 0-4'
+    # Runs every 2 hours on Friday from 00:00 to 09:59 UTC (Ends before Friday 13:00 Israel time)
+    - cron: '0 0,2,4,6,8 * * 5'
+    # Runs every 2 hours on Saturday from 18:00 to 23:59 UTC (Starts from Saturday 21:00 Israel time)
+    - cron: '0 18,20,22 * * 6'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
