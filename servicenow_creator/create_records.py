@@ -97,10 +97,6 @@ def progress_change(chg):
     
     if state == -5: # New -> Assess
         payload = {"state": "-4"}
-        if not chg.get('assignment_group'):
-            groups = get_records("sys_user_group", "active=true", limit=10)
-            if groups:
-                payload["assignment_group"] = random.choice(groups)['sys_id']
         update_record("change_request", chg_id, payload, silent=True)
         
     elif state == -4: # Assess -> Authorize
@@ -181,20 +177,11 @@ def ensure_minimum_active_changes(min_count=3):
                 "type": "Normal",
                 "state": "-5", # Create in New, then fast-forward
                 "priority": "3",
-            "assignment_group": ag_id,
-            "assigned_to": user_id,
-            "risk": "3",
-                "risk": "3", # Moderate
-                "assignment_group": ag_id,
-                "assigned_to": user_id,
-                "assignment_group": ag_id,
-                "assigned_to": user_id,
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
                 "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
-                "cab_date_time": (now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
                 "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
                 "requested_by_date": (now - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
                 "review_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
@@ -203,7 +190,6 @@ def ensure_minimum_active_changes(min_count=3):
                 "impact": "3",
                 "urgency": "3",
                 "scope": "Medium",
-                "cab_required": "false",
                 "outside_maintenance_schedule": "false",
                 "production_system": "false",
                 "unauthorized": "false",
@@ -217,7 +203,6 @@ def ensure_minimum_active_changes(min_count=3):
                 "phase_state": "Open",
                 "approval": "Approved",
                 "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
-                "cab_recommendation": "Approved by CAB.",
                 "change_plan": "Standard change plan.",
                 "conflict_last_run": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "reason": "Routine update",
@@ -240,8 +225,6 @@ def ensure_minimum_active_changes(min_count=3):
                     ag_id = random.choice(groups)['sys_id'] if groups else ""
                     
                     payload_assess = {"state": "-4"}
-                    if ag_id:
-                        payload_assess["assignment_group"] = ag_id
                         
                     update_record("change_request", chg_id, payload_assess, silent=True) # Assess
                     update_record("change_request", chg_id, {"state": "-3"}, silent=True) # Authorize
@@ -266,17 +249,11 @@ def ensure_minimum_active_changes(min_count=3):
                 "test_plan": "Run automated health check scripts.",
                 "type": "Normal",
                 "priority": "4",
-                "risk": "4", # Moderate
-                "assignment_group": ag_id,
-                "assigned_to": user_id,
-                "assignment_group": ag_id,
-                "assigned_to": user_id,
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
                 "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
-                "cab_date_time": (now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
                 "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
                 "requested_by_date": (now - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
                 "review_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
@@ -285,7 +262,6 @@ def ensure_minimum_active_changes(min_count=3):
                 "impact": "3",
                 "urgency": "3",
                 "scope": "Medium",
-                "cab_required": "false",
                 "outside_maintenance_schedule": "false",
                 "production_system": "false",
                 "unauthorized": "false",
@@ -299,7 +275,6 @@ def ensure_minimum_active_changes(min_count=3):
                 "phase_state": "Open",
                 "approval": "Approved",
                 "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
-                "cab_recommendation": "Approved by CAB.",
                 "change_plan": "Routine maintenance change plan.",
                 "conflict_last_run": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "reason": "Routine update",
@@ -315,20 +290,7 @@ def ensure_minimum_active_changes(min_count=3):
             })
 
 def reassign_incidents():
-    print("\n--- Reassigning Incidents ---")
-    groups = get_records("sys_user_group", "active=true", limit=10)
-    if not groups:
-        return
-
-    incidents = get_records("incident", "active=true^stateIN1,2")
-    for inc in incidents:
-        # Reassign roughly 20% of incidents each run
-        if random.random() < 0.2:
-            inc_id = inc['sys_id']
-            inc_num = inc['number']
-            group = random.choice(groups)
-            print(f"Reassigning incident {inc_num} to {group.get('name')}...")
-            update_record("incident", inc_id, {"assignment_group": group['sys_id']}, silent=True)
+    return
 
 def process_incidents():
     print("\n--- Processing Incidents ---")
@@ -400,12 +362,6 @@ def create_daily_records():
             "urgency": "2",
             "impact": "2",
             "priority": "3",
-            "assignment_group": ag_id,
-            "assigned_to": user_id,
-            "risk": "3",
-            "assignment_group": ag_id,
-            "assigned_to": user_id,
-            "risk": "3",
             "category": "software",
             "subcategory": "os",
             "contact_type": "Phone",
@@ -417,8 +373,6 @@ def create_daily_records():
             "knowledge": "false",
             "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
             "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "assignment_group": ag_id,
-                "assigned_to": user_id,
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
             "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
             "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -440,12 +394,6 @@ def create_daily_records():
             "urgency": "2",
             "impact": "2",
             "priority": "3",
-            "assignment_group": ag_id,
-            "assigned_to": user_id,
-            "risk": "3",
-            "assignment_group": ag_id,
-            "assigned_to": user_id,
-            "risk": "3",
             "state": "1",
             "category": "software",
             "subcategory": "os",
@@ -454,8 +402,6 @@ def create_daily_records():
             "knowledge": "false",
             "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
             "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "assignment_group": ag_id,
-                "assigned_to": user_id,
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
             "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
             "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -480,22 +426,16 @@ def backfill_all_records():
     ag_id, user_id = get_random_group_and_user()
     
     chg_payload = {
-        "assignment_group": ag_id,
-                "assigned_to": user_id,
-                "assignment_group": ag_id,
-                "assigned_to": user_id,
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
         "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
         "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
         "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
-        "cab_date_time": (now - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
         "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
         "requested_by_date": (now - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "review_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "approval": "Approved",
         "approval_set": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "cab_recommendation": "Approved by CAB.",
         "change_plan": "Standard change plan.",
         "conflict_last_run": now.strftime("%Y-%m-%d %H:%M:%S"),
         "reason": "Routine update",
@@ -512,28 +452,19 @@ def backfill_all_records():
         "unauthorized": "false",
         "production_system": "false",
         "outside_maintenance_schedule": "false",
-        "cab_required": "false",
         "time_worked": "1970-01-01 01:00:00",
         "calendar_duration": "1970-01-01 02:00:00",
         "business_duration": "1970-01-01 02:00:00"
     }
     
     inc_payload = {
-        "assignment_group": ag_id,
-        "assigned_to": user_id,
-        "risk": "3",
         "priority": "3",
-            "assignment_group": ag_id,
-            "assigned_to": user_id,
-            "risk": "3",
         "impact": "3",
         "urgency": "3",
         "type": "Normal",
         "category": "Other",
         "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
         "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "assignment_group": ag_id,
-                "assigned_to": user_id,
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
         "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -555,21 +486,13 @@ def backfill_all_records():
     }
     
     prb_payload = {
-        "assignment_group": ag_id,
-        "assigned_to": user_id,
-        "risk": "3",
         "priority": "3",
-            "assignment_group": ag_id,
-            "assigned_to": user_id,
-            "risk": "3",
         "impact": "3",
         "urgency": "3",
         "type": "Normal",
         "category": "Other",
         "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
         "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "assignment_group": ag_id,
-                "assigned_to": user_id,
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
         "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
