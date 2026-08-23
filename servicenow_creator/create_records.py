@@ -146,15 +146,51 @@ def get_random_group_and_user():
     user_id = random.choice(users)['sys_id'] if users else ""
     return ag_id, user_id
 
-def get_random_group_and_user():
-    groups = get_records("sys_user_group", "active=true", limit=10)
-    ag_id = random.choice(groups)['sys_id'] if groups else ""
-    users = get_records("sys_user", "active=true", limit=10)
-    user_id = random.choice(users)['sys_id'] if users else ""
-    return ag_id, user_id
+def ensure_closed_changes(min_closed=5):
+    print("\n--- Ensuring Minimum Closed Changes ---")
+    closed_changes = get_records("change_request", "active=false^state=3")
+    current_count = len(closed_changes)
+    print(f"Currently have {current_count} closed changes.")
+    
+    if current_count < min_closed:
+        needed = min_closed - current_count
+        print(f"Need to create {needed} more closed change(s).")
+        for _ in range(needed):
+            ag_id, user_id = get_random_group_and_user()
+            now = datetime.now(timezone.utc)
+            chg = create_record("change_request", {
+                "short_description": "Auto-generated closed change: Historical record",
+                "description": "Historical change record for testing.",
+                "justification": "System maintenance.",
+                "implementation_plan": "Standard procedure.",
+                "risk_impact_analysis": "Low risk.",
+                "backout_plan": "Restore from backups.",
+                "test_plan": "Verify system health.",
+                "type": "Normal",
+                "state": "3", # Closed
+                "active": "false",
+                "priority": "4",
+                "assignment_group": ag_id,
+                "assigned_to": user_id,
+                "start_date": (now - timedelta(days=5)).strftime("%Y-%m-%d %H:%M:%S"),
+                "end_date": (now - timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S"),
+                "expected_start": (now - timedelta(days=5)).strftime("%Y-%m-%d %H:%M:%S"),
+                "work_start": (now - timedelta(days=5)).strftime("%Y-%m-%d %H:%M:%S"),
+                "work_end": (now - timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S"),
+                "close_code": "successful",
+                "close_notes": "Auto-generated as closed.",
+                "category": "Other",
+                "contact_type": "Phone",
+                "impact": "3",
+                "urgency": "3",
+                "scope": "Medium"
+            })
+            if chg:
+                chg_id = chg.get('sys_id')
+                if chg_id:
+                    update_record("change_request", chg_id, {"state": "3", "active": "false", "close_code": "successful", "close_notes": "Auto-closed"}, silent=True)
 
-def ensure_minimum_active_changes(min_count=3):
-    ag_id, user_id = get_random_group_and_user()
+def ensure_minimum_active_changes(min_count=4):
     ag_id, user_id = get_random_group_and_user()
     print(f"\n--- Ensuring Minimum Active Changes ---")
     implement_changes = get_records("change_request", "active=true^state=-1")
@@ -165,6 +201,7 @@ def ensure_minimum_active_changes(min_count=3):
         needed_active = min_count - current_count
         print(f"Need to create {needed_active} more change(s) directly in Implement state.")
         for _ in range(needed_active):
+            ag_id, user_id = get_random_group_and_user()
             now = datetime.now(timezone.utc)
             chg = create_record("change_request", {
                 "short_description": "Auto-generated change: Urgent security patch",
@@ -177,6 +214,8 @@ def ensure_minimum_active_changes(min_count=3):
                 "type": "Normal",
                 "state": "-5", # Create in New, then fast-forward
                 "priority": "3",
+                "assignment_group": ag_id,
+                "assigned_to": user_id,
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
                 "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -221,16 +260,13 @@ def ensure_minimum_active_changes(min_count=3):
                 chg_id = chg.get('sys_id')
                 if chg_id:
                     # Fast-forward to Implement
-                    groups = get_records("sys_user_group", "active=true", limit=10)
-                    ag_id = random.choice(groups)['sys_id'] if groups else ""
-                    
-                    payload_assess = {"state": "-4"}
+                    payload_assess = {"state": "-4", "assignment_group": ag_id, "assigned_to": user_id}
                         
                     update_record("change_request", chg_id, payload_assess, silent=True) # Assess
                     update_record("change_request", chg_id, {"state": "-3"}, silent=True) # Authorize
                     approve_all_pending(chg_id)
                     update_record("change_request", chg_id, {"state": "-2"}, silent=True) # Scheduled
-                    update_record("change_request", chg_id, {"state": "-1", "work_notes": "Starting implementation."}, silent=True) # Implement
+                    update_record("change_request", chg_id, {"state": "-1", "work_notes": "Starting implementation.", "assignment_group": ag_id, "assigned_to": user_id}, silent=True) # Implement
 
     # Let's ensure we have enough total active changes in pipeline to reach the states
     pipeline_changes = get_records("change_request", "active=true")
@@ -249,6 +285,8 @@ def ensure_minimum_active_changes(min_count=3):
                 "test_plan": "Run automated health check scripts.",
                 "type": "Normal",
                 "priority": "4",
+                "assignment_group": ag_id,
+                "assigned_to": user_id,
                 "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
                 "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -362,6 +400,8 @@ def create_daily_records():
             "urgency": "2",
             "impact": "2",
             "priority": "3",
+            "assignment_group": ag_id,
+            "assigned_to": user_id,
             "category": "software",
             "subcategory": "os",
             "contact_type": "Phone",
@@ -373,7 +413,7 @@ def create_daily_records():
             "knowledge": "false",
             "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
             "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
-                "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
             "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
             "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
             "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
@@ -394,6 +434,8 @@ def create_daily_records():
             "urgency": "2",
             "impact": "2",
             "priority": "3",
+            "assignment_group": ag_id,
+            "assigned_to": user_id,
             "state": "1",
             "category": "software",
             "subcategory": "os",
@@ -402,7 +444,7 @@ def create_daily_records():
             "knowledge": "false",
             "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
             "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
-                "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
             "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
             "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
             "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
@@ -426,7 +468,7 @@ def backfill_all_records():
     ag_id, user_id = get_random_group_and_user()
     
     chg_payload = {
-                "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
         "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
         "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -465,7 +507,7 @@ def backfill_all_records():
         "category": "Other",
         "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
         "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
-                "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
         "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
         "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
@@ -493,7 +535,7 @@ def backfill_all_records():
         "category": "Other",
         "due_date": (now + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"),
         "expected_start": now.strftime("%Y-%m-%d %H:%M:%S"),
-                "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "start_date": now.strftime("%Y-%m-%d %H:%M:%S"),
         "end_date": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
         "work_start": now.strftime("%Y-%m-%d %H:%M:%S"),
         "work_end": (now + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"),
@@ -547,7 +589,8 @@ def main():
     create_daily_records()
     
     # 4. Ensure pipeline has changes
-    ensure_minimum_active_changes(3)
+    ensure_minimum_active_changes(4)
+    ensure_closed_changes(5)
     
     # 5. Display what's running
     print_running_changes()
