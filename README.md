@@ -13,6 +13,7 @@ ServiceNow Creator is a fully automated workflow simulation bot that continuousl
   - A healthy forward-looking pipeline of upcoming changes (at least 16 changes overall).
 - **Incident & Problem Automation**: Periodically generates realistic mock incidents and problems in Hebrew with English IT terminology, simulating an active service desk. It calculates record age and automatically resolves aging incidents with formal resolution notes.
 - **Automated Approvals**: Detects changes pending CAB or manager approval in the **Authorize** state and automatically approves their corresponding `sysapproval_approver` records.
+- **Business Rule & Data Integrity Compliance**: Strictly adheres to ServiceNow's OOTB task assignment validation rules (*"Abort changes on group"*). Automatically cross-references verified group memberships from `sys_user_grmember` so that all task assignments remain valid without triggering business rule transaction aborts.
 - **Hourly Schedule & Israeli Weekend Awareness**:
   - Runs **hourly** throughout the Israeli work week: Sunday through Thursday (`0 * * * 0-4`).
   - Runs Friday morning until 13:00 Israel time (`0 0-9 * * 5` UTC).
@@ -45,6 +46,7 @@ The automation requires a ServiceNow user account with sufficient read/write/del
 - `sysapproval_approver`
 - `sys_user_group`
 - `sys_user`
+- `sys_user_grmember` (Used to verify user-to-group assignments and ensure business rule compliance)
 
 *Note: The default `admin` account on a ServiceNow Personal Developer Instance (PDI) is recommended for testing.*
 
@@ -75,8 +77,16 @@ If you prefer to run the bot locally or develop new features:
    ```bash
    pip install -r servicenow_creator/requirements.txt
    ```
-3. **Set Environment Variables**:
-   Export your ServiceNow credentials and UTF-8 encoding support to your local environment.
+3. **Configure Environment Variables**:
+   The script automatically detects and loads any `.env` file located in the project directory, parent folder, or sister project (`Service-Now-Changes-Schedule/.env`). Both `SN_*` and `SNOW_*` prefixes are supported:
+   
+   ```env
+   SN_INSTANCE=dev12345
+   SN_USERNAME=admin
+   SN_PASSWORD=your_password
+   ```
+
+   Alternatively, you can export them directly in your shell:
    
    *Windows (PowerShell):*
    ```powershell
