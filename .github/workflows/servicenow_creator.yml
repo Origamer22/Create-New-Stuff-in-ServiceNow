@@ -2,12 +2,12 @@ name: ServiceNow Creator
 
 on:
   schedule:
-    # Runs every 2 hours on Sun-Thu
-    - cron: '0 */2 * * 0-4'
-    # Runs every 2 hours on Friday from 00:00 to 09:59 UTC (Ends before Friday 13:00 Israel time)
-    - cron: '0 0,2,4,6,8 * * 5'
-    # Runs every 2 hours on Saturday from 18:00 to 23:59 UTC (Starts from Saturday 21:00 Israel time)
-    - cron: '0 18,20,22 * * 6'
+    # Runs every hour on Sun-Thu
+    - cron: '0 * * * 0-4'
+    # Runs every hour on Friday from 00:00 to 09:59 UTC (Ends before Friday 13:00 Israel time)
+    - cron: '0 0-9 * * 5'
+    # Runs every hour on Saturday from 18:00 to 23:59 UTC (Starts from Saturday 21:00 Israel time)
+    - cron: '0 18-23 * * 6'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
@@ -33,6 +33,8 @@ jobs:
           SN_INSTANCE: ${{ secrets.SN_INSTANCE }}
           SN_USERNAME: ${{ secrets.SN_USERNAME }}
           SN_PASSWORD: ${{ secrets.SN_PASSWORD }}
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: "1"
         run: |
           python servicenow_creator/create_records.py
 
