@@ -14,9 +14,36 @@ try:
 except Exception:
     pass
 
-SN_INSTANCE = os.environ.get('SN_INSTANCE')
-SN_USERNAME = os.environ.get('SN_USERNAME')
-SN_PASSWORD = os.environ.get('SN_PASSWORD')
+# Try loading .env from various standard locations if credentials are not in os.environ
+if not all([os.environ.get('SN_INSTANCE') or os.environ.get('SNOW_INSTANCE'),
+            os.environ.get('SN_USERNAME') or os.environ.get('SNOW_USERNAME'),
+            os.environ.get('SN_PASSWORD') or os.environ.get('SNOW_PASSWORD')]):
+    search_dirs = [
+        os.path.join(os.path.dirname(__file__), '..', '.env'),
+        os.path.join(os.path.dirname(__file__), '.env'),
+        os.path.join(os.path.dirname(__file__), '..', '..', 'Service-Now-Changes-Schedule', '.env'),
+        os.path.join(os.getcwd(), '.env'),
+        os.path.join(os.getcwd(), '..', 'Service-Now-Changes-Schedule', '.env'),
+    ]
+    for sp in search_dirs:
+        sp = os.path.abspath(sp)
+        if os.path.exists(sp):
+            try:
+                with open(sp, 'r', encoding='utf-8', errors='replace') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            k, v = line.split('=', 1)
+                            k, v = k.strip(), v.strip().strip("'\"")
+                            if k not in os.environ:
+                                os.environ[k] = v
+                break
+            except Exception:
+                pass
+
+SN_INSTANCE = os.environ.get('SN_INSTANCE') or os.environ.get('SNOW_INSTANCE')
+SN_USERNAME = os.environ.get('SN_USERNAME') or os.environ.get('SNOW_USERNAME')
+SN_PASSWORD = os.environ.get('SN_PASSWORD') or os.environ.get('SNOW_PASSWORD')
 
 if not all([SN_INSTANCE, SN_USERNAME, SN_PASSWORD]):
     print("Error: Missing ServiceNow credentials.")
@@ -450,7 +477,6 @@ def generate_change_payload(state_target="implement", ag_id="", user_id=""):
         "category": tmpl.get("category", "Other"),
         "scope": tmpl.get("scope", "Medium"),
         "assignment_group": ag_id,
-        "assigned_to": user_id,
         "start_date": start_str,
         "end_date": end_str,
         "expected_start": start_str,
@@ -486,6 +512,8 @@ def generate_change_payload(state_target="implement", ag_id="", user_id=""):
         "on_hold_reason": "Not on hold",
         "activity_due": (now + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
     }
+    if user_id:
+        payload["assigned_to"] = user_id
     return payload
 
 def progress_change(chg):
@@ -506,7 +534,10 @@ def progress_change(chg):
     now_utc = datetime.now(timezone.utc)
     
     if state == -5: # New -> Assess
-        payload = {"state": "-4"}
+        ag_id, user_id = get_random_group_and_user()
+        payload = {"state": "-4", "assignment_group": ag_id}
+        if user_id:
+            payload["assigned_to"] = user_id
         update_record("change_request", chg_id, payload, silent=True)
         
     elif state == -4: # Assess -> Authorize
@@ -545,32 +576,32 @@ def progress_change(chg):
                 end_dt = datetime.strptime(end_date_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
                 ready_to_review = now_utc >= end_dt
             except:
-                ready_to_review = age_hours > 24
+                ready_to_review = abs(age_hours) > 24
         else:
-            ready_to_review = age_hours > 24
+            ready_to_review = abs(age_hours) > 24
             
         if ready_to_review:
             update_record("change_request", chg_id, {
                 "state": "0",
                 "work_notes": "היישום (Implementation) הושלם בהצלחה. העברה לשלב Review ובדיקות קבלה."
             }, silent=True)
-            print(f"Moved {chg_num} to Review (age {age_hours:.1f}h)")
+            print(f"Moved {chg_num} to Review (age {abs(age_hours):.1f}h)")
         else:
-            print(f"Keeping {chg_num} in Implement (scheduled until {end_date_str or 'N/A'}, age {age_hours:.1f}h)")
+            print(f"Keeping {chg_num} in Implement (scheduled until {end_date_str or 'N/A'}, age {abs(age_hours):.1f}h)")
             
     elif state == 0: # Review -> Closed
         # Keep in review for 12 to 48 hours before closing
         threshold = random.randint(12, 48)
-        if age_hours > threshold:
+        if abs(age_hours) > threshold:
             payload = {
                 "state": "3",
                 "close_code": "successful",
                 "close_notes": "השינוי נסגר בהצלחה לאחר סיום שלב ה-Review ואימות יציבות המערכות בסביבת Production."
             }
             update_record("change_request", chg_id, payload, silent=True)
-            print(f"Closed {chg_num} (age {age_hours:.1f}h)")
+            print(f"Closed {chg_num} (age {abs(age_hours):.1f}h)")
         else:
-            print(f"Keeping {chg_num} in Review (age {age_hours:.1f}h, threshold {threshold}h)")
+            print(f"Keeping {chg_num} in Review (age {abs(age_hours):.1f}h, threshold {threshold}h)")
 
 def process_all_changes():
     print("\n--- Processing Change Requests ---")
@@ -578,12 +609,28 @@ def process_all_changes():
     for chg in changes:
         progress_change(chg)
 
+_CACHED_GRMEMBERS = []
+
 def get_random_group_and_user():
-    groups = get_records("sys_user_group", "active=true", limit=10)
-    ag_id = random.choice(groups)['sys_id'] if groups else ""
-    users = get_records("sys_user", "active=true", limit=10)
-    user_id = random.choice(users)['sys_id'] if users else ""
-    return ag_id, user_id
+    global _CACHED_GRMEMBERS
+    if not _CACHED_GRMEMBERS:
+        members = get_records("sys_user_grmember", "group.active=true^user.active=true", limit=100)
+        valid = []
+        for m in members:
+            ag = m['group']['value'] if isinstance(m.get('group'), dict) else m.get('group', '')
+            u = m['user']['value'] if isinstance(m.get('user'), dict) else m.get('user', '')
+            if ag and u:
+                valid.append((ag, u))
+        _CACHED_GRMEMBERS = valid
+
+    if _CACHED_GRMEMBERS:
+        return random.choice(_CACHED_GRMEMBERS)
+
+    groups = get_records("sys_user_group", "active=true", limit=20)
+    if groups:
+        ag_id = random.choice(groups)['sys_id']
+        return ag_id, ""
+    return "", ""
 
 def ensure_closed_changes(min_closed=5):
     print("\n--- Ensuring Minimum Closed Changes ---")
@@ -597,16 +644,19 @@ def ensure_closed_changes(min_closed=5):
         for _ in range(needed):
             ag_id, user_id = get_random_group_and_user()
             payload = generate_change_payload(state_target="closed", ag_id=ag_id, user_id=user_id)
-            payload.update({
-                "state": "3",
-                "active": "false",
-                "close_code": "successful",
-                "close_notes": "השינוי יושם במלואו, נבדק בסביבת ה-Production ונסגר בהצלחה."
-            })
+            payload["state"] = "-5"
             chg = create_record("change_request", payload)
             if chg:
                 chg_id = chg.get('sys_id')
                 if chg_id:
+                    payload_assess = {"state": "-4", "assignment_group": ag_id}
+                    if user_id: payload_assess["assigned_to"] = user_id
+                    update_record("change_request", chg_id, payload_assess, silent=True)
+                    update_record("change_request", chg_id, {"state": "-3"}, silent=True)
+                    approve_all_pending(chg_id)
+                    update_record("change_request", chg_id, {"state": "-2"}, silent=True)
+                    update_record("change_request", chg_id, {"state": "-1"}, silent=True)
+                    update_record("change_request", chg_id, {"state": "0"}, silent=True)
                     update_record("change_request", chg_id, {
                         "state": "3",
                         "active": "false",
@@ -633,17 +683,21 @@ def ensure_minimum_active_changes(min_count=4):
                 chg_id = chg.get('sys_id')
                 if chg_id:
                     # Fast-forward to Implement
-                    payload_assess = {"state": "-4", "assignment_group": ag_id, "assigned_to": user_id}
+                    payload_assess = {"state": "-4", "assignment_group": ag_id}
+                    if user_id:
+                        payload_assess["assigned_to"] = user_id
                     update_record("change_request", chg_id, payload_assess, silent=True) # Assess
                     update_record("change_request", chg_id, {"state": "-3"}, silent=True) # Authorize
                     approve_all_pending(chg_id)
                     update_record("change_request", chg_id, {"state": "-2"}, silent=True) # Scheduled
-                    update_record("change_request", chg_id, {
+                    payload_imp = {
                         "state": "-1",
                         "work_notes": "תחילת יישום (Implementation) של השינוי לפי התוכנית.",
                         "assignment_group": ag_id,
-                        "assigned_to": user_id
-                    }, silent=True) # Implement
+                    }
+                    if user_id:
+                        payload_imp["assigned_to"] = user_id
+                    update_record("change_request", chg_id, payload_imp, silent=True) # Implement
 
     # Ensure healthy pipeline of upcoming changes
     pipeline_changes = get_records("change_request", "active=true")
@@ -664,7 +718,7 @@ def process_incidents():
     for inc in incidents:
         inc_id = inc['sys_id']
         inc_num = inc['number']
-        age_hours = get_age_hours(inc.get('sys_created_on'))
+        age_hours = abs(get_age_hours(inc.get('sys_created_on')))
         close_prob = min(0.9, age_hours / 48.0)
         
         if random.random() < close_prob:
@@ -698,7 +752,7 @@ def print_running_changes():
             if type(assignee) is dict:
                 assignee_name = assignee.get('display_value', 'Unknown')
             else:
-                assignee_name = str(assignee) if assignee else "N/A"
+                assignee_name = str(assignee) if assignee else "צוות תשתיות"
                 
             line = f"- **{num}**: {short_desc} | מצב: {state_str} | מתאריך: {start_date} עד: {end_date} | מוקצה ל: {assignee_name}"
             print(line.replace("**", ""))
@@ -721,14 +775,13 @@ def create_daily_records():
     # Sporadically create incident in Hebrew with English IT terms
     if random.random() < 0.5:
         print("\n--- Creating New Records ---")
-        create_record("incident", {
+        inc_p = {
             "short_description": "ירידה בביצועים (Performance Degradation) בפורטל האפליקציה הראשי",
             "description": "משתמשים מדווחים על זמני תגובה איטיים ועיכובים בטעינת דפים ב-Web Portal.",
             "urgency": "2",
             "impact": "2",
             "priority": "3",
             "assignment_group": ag_id,
-            "assigned_to": user_id,
             "category": "software",
             "subcategory": "os",
             "contact_type": "Phone",
@@ -752,17 +805,19 @@ def create_daily_records():
             "time_worked": "1970-01-01 01:00:00",
             "calendar_duration": "1970-01-01 02:00:00",
             "business_duration": "1970-01-01 02:00:00"
-        })
+        }
+        if user_id:
+            inc_p["assigned_to"] = user_id
+        create_record("incident", inc_p)
     
     if random.random() < 0.2:
-        create_record("problem", {
+        prob_p = {
             "short_description": "חקר שורש תקלה (Root Cause Analysis): זמני השהייה חוזרים ב-Database",
             "description": "אירועים חוזרים של Latency גבוה וחיבורי DB תלויים בשעות עומס.",
             "urgency": "2",
             "impact": "2",
             "priority": "3",
             "assignment_group": ag_id,
-            "assigned_to": user_id,
             "state": "1",
             "category": "software",
             "subcategory": "os",
@@ -786,7 +841,10 @@ def create_daily_records():
             "time_worked": "1970-01-01 01:00:00",
             "calendar_duration": "1970-01-01 02:00:00",
             "business_duration": "1970-01-01 02:00:00"
-        })
+        }
+        if user_id:
+            prob_p["assigned_to"] = user_id
+        create_record("problem", prob_p)
 
 def backfill_records_missing_dates():
     """
