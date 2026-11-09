@@ -1,0 +1,5 @@
+# Development / test dependencies only (not installed by the GitHub Actions workflows)
+-r requirements.txt
+pytest>=8
+pyyaml>=6
+

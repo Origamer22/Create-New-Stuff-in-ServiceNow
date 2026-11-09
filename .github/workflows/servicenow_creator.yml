@@ -1,4 +1,11 @@
-name: ServiceNow Creator
+name: ServiceNow Creator (Hebrew)
+
+# Hebrew edition: Hebrew text with English IT terms (servicenow_creator/create_records.py).
+#
+# In GitHub -> Actions:
+# - Enable ONLY this workflow (and disable the English one) to run Hebrew in hourly loops.
+# - Enable BOTH workflows to run both Hebrew and English in hourly loops.
+# - Click "Run workflow" anytime for an immediate one-off run.
 
 on:
   schedule:
@@ -9,6 +16,11 @@ on:
     # Runs every hour on Saturday from 18:00 to 23:59 UTC (Starts from Saturday 21:00 Israel time)
     - cron: '0 18-23 * * 6'
   workflow_dispatch: # Allow manual trigger
+
+# Shared with the English workflow so the two editions never run at the same time
+concurrency:
+  group: servicenow-creator
+  cancel-in-progress: false
 
 jobs:
   run-scripts:
@@ -40,12 +52,14 @@ jobs:
 
       - name: Keepalive Commit
         run: |
-          LAST_COMMIT=$(git log -1 --format=%ct)
+          git fetch origin ${{ github.ref_name }}
+          LAST_COMMIT=$(git log -1 --format=%ct FETCH_HEAD)
           NOW=$(date +%s)
           DAYS=$(( (NOW - LAST_COMMIT) / 86400 ))
           if [ $DAYS -gt 50 ]; then
             git config --global user.name "github-actions[bot]"
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout -B ${{ github.ref_name }} FETCH_HEAD
             git commit --allow-empty -m "chore: keepalive commit"
-            git push origin HEAD:${{ github.ref_name }}
+            git push origin ${{ github.ref_name }}
           fi

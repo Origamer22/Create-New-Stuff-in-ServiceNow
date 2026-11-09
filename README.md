@@ -4,14 +4,14 @@ ServiceNow Creator is a fully automated workflow simulation bot that continuousl
 
 ## 🌟 Key Features
 
-- **Realistic Hebrew & English IT Change Catalog**: Generates comprehensive, production-grade Change Requests authored in natural Hebrew with authentic English technical terminology (e.g., *Kubernetes Clusters, Check Point Firewalls, PostgreSQL Clusters, NetApp SAN Storage, SSL/TLS Wildcard Certificates, VMware ESXi, Azure AD SSO & MFA, BGP Multihoming*). Every change includes complete ITIL fields: justification, detailed implementation steps, risk/impact analysis, test plan, and backout plan.
+- **Dual-Language IT Change Catalogs (Hebrew + English & Pure English)**: Ships with two matching 15-template catalogs—one authored in natural Hebrew with English technical terminology, and a second written in pure English with English IT terminology (e.g., *Kubernetes Clusters, Check Point Firewalls, PostgreSQL Clusters, NetApp SAN Storage, SSL/TLS Wildcard Certificates, VMware ESXi, Azure AD SSO & MFA, BGP Multihoming*). Every change includes complete ITIL fields: justification, detailed implementation steps, risk/impact analysis, test plan, and backout plan.
 - **Calendar-Spanning Durations (3 Hours to 5 Days)**: Change windows are modeled with realistic duration distributions—from rapid 3–6 hour maintenance windows up to multi-day 4–5 day migrations (120 hours). This ensures schedule and calendar views (such as the ServiceNow Changes Schedule calendar) remain visually active and spanned across days and weeks.
 - **Date-Aware ITIL Lifecycle Progression**: Moves active change requests through standard ITIL states (**New ➔ Assess ➔ Authorize ➔ Scheduled ➔ Implement ➔ Review ➔ Closed**). Scheduled changes only enter **Implement** when their planned `start_date` arrives, and implement changes stay active until their planned `end_date` is reached.
 - **Minimum Pipeline & Quota Enforcement**: Continuously monitors the change pipeline to maintain:
   - At least **8 concurrent active changes** in the **Implement** state.
   - At least **8 completed changes** in the **Closed** state.
   - A healthy forward-looking pipeline of upcoming changes (at least 16 changes overall).
-- **Incident & Problem Automation**: Periodically generates realistic mock incidents and problems in Hebrew with English IT terminology, simulating an active service desk. It calculates record age and automatically resolves aging incidents with formal resolution notes.
+- **Incident & Problem Automation**: Periodically generates realistic mock incidents and problems in the selected language (Hebrew with English IT terminology, or pure English), simulating an active service desk. It calculates record age and automatically resolves aging incidents with formal resolution notes.
 - **Automated Approvals**: Detects changes pending CAB or manager approval in the **Authorize** state and automatically approves their corresponding `sysapproval_approver` records.
 - **Business Rule & Data Integrity Compliance**: Strictly adheres to ServiceNow's OOTB task assignment validation rules (*"Abort changes on group"*). Automatically cross-references verified group memberships from `sys_user_grmember` so that all task assignments remain valid without triggering business rule transaction aborts.
 - **Hourly Schedule & Israeli Weekend Awareness**:
@@ -25,9 +25,14 @@ ServiceNow Creator is a fully automated workflow simulation bot that continuousl
 
 ## 📂 Repository Structure
 
-- [create_records.py](file:///c:/Users/orile/OneDrive/Service%20Now/Create-New-Stuff-in-ServiceNow/servicenow_creator/create_records.py): The core Python engine handling REST API calls, Hebrew templates, duration calculations, date-aware lifecycle state machines, and summary reporting.
-- [requirements.txt](file:///c:/Users/orile/OneDrive/Service%20Now/Create-New-Stuff-in-ServiceNow/servicenow_creator/requirements.txt): Python dependencies (`requests` for API communication, `pytz` for Israel timezone calculations).
-- [.github/workflows/servicenow_creator.yml](file:///c:/Users/orile/OneDrive/Service%20Now/Create-New-Stuff-in-ServiceNow/.github/workflows/servicenow_creator.yml): GitHub Actions workflow defining hourly cron schedules, UTF-8 environment settings, and keepalive logic.
+- [servicenow_creator/servicenow_core.py](servicenow_creator/servicenow_core.py): Shared core Python engine handling REST API calls, duration calculations, date-aware lifecycle state machines, quota enforcement, Israel weekend detection, and summary reporting.
+- [servicenow_creator/create_records.py](servicenow_creator/create_records.py): **Hebrew edition** — Change Request, Incident, Problem, and lifecycle note templates authored in natural Hebrew with English IT terminology.
+- [servicenow_creator/create_records_en.py](servicenow_creator/create_records_en.py): **English edition** — Matching templates and lifecycle notes authored in pure English with English IT terminology.
+- [servicenow_creator/requirements.txt](servicenow_creator/requirements.txt): Runtime Python dependencies (`requests` for API communication, `pytz` for Israel timezone calculations).
+- [servicenow_creator/requirements-dev.txt](servicenow_creator/requirements-dev.txt): Development/test dependencies (`pytest`, `pyyaml`).
+- [servicenow_creator/tests/](servicenow_creator/tests/): Automated `pytest` suite validating language purity, scheduling windows, lifecycle rules, and GitHub Actions workflow logic.
+- [.github/workflows/servicenow_creator.yml](.github/workflows/servicenow_creator.yml): GitHub Actions workflow for the **Hebrew** edition (`ServiceNow Creator (Hebrew)`).
+- [.github/workflows/servicenow_creator_en.yml](.github/workflows/servicenow_creator_en.yml): GitHub Actions workflow for the **English** edition (`ServiceNow Creator (English)`).
 
 ## 🚀 Step-by-Step Setup Instructions
 
@@ -62,12 +67,18 @@ Pass your ServiceNow credentials securely to GitHub Actions:
    - **Name**: `SN_PASSWORD`  
      **Secret**: Your ServiceNow API password.
 
-### Step 4: Enable the GitHub Action
+### Step 4: Enable & Choose Which Workflow Runs
 By default, GitHub disables scheduled workflows in newly forked repositories.
 1. Go to the **Actions** tab in your GitHub repository.
-2. Click the green button: **I understand my workflows, go ahead and enable them**.
-3. The workflow will now automatically run every hour (according to the Israel work week schedule).
-4. **To test immediately:** Select **ServiceNow Creator** from the left sidebar, click the **Run workflow** dropdown, and click **Run workflow**.
+2. If prompted on a new fork, click **I understand my workflows, go ahead and enable them**.
+3. On the left sidebar under **All workflows**, you will see two workflows:
+   - **ServiceNow Creator (Hebrew)** (`.github/workflows/servicenow_creator.yml`)
+   - **ServiceNow Creator (English)** (`.github/workflows/servicenow_creator_en.yml`)
+4. **Choose which workflow(s) run automatically in hourly loops:**
+   - **Run ONLY Hebrew in hourly loops:** Click **ServiceNow Creator (English)** on the left sidebar ➔ click the **`...`** menu (top right) ➔ click **Disable workflow**, and leave **ServiceNow Creator (Hebrew)** enabled.
+   - **Run ONLY English in hourly loops:** Click **ServiceNow Creator (Hebrew)** on the left sidebar ➔ click the **`...`** menu (top right) ➔ click **Disable workflow**, and make sure **ServiceNow Creator (English)** is enabled (if disabled, click **Enable workflow**).
+   - **Run BOTH in hourly loops:** Leave **both** workflows enabled. Every hour during the Israeli work week, GitHub triggers both workflows sequentially (they share a concurrency group so they never overlap).
+5. **Run immediately (one-time trigger):** Click whichever workflow you want on the left sidebar, click the **Run workflow** dropdown, and click **Run workflow**.
 
 ### Step 5: Local Development & Testing (Optional)
 If you prefer to run the bot locally or develop new features:
@@ -104,11 +115,24 @@ If you prefer to run the bot locally or develop new features:
    export PYTHONIOENCODING="utf-8"
    export PYTHONUTF8="1"
    ```
-4. **Execute the Script**:
+4. **Execute Either Edition**:
    ```bash
+   # Hebrew with English IT terms
    python servicenow_creator/create_records.py
+
+   # Pure English with English IT terms
+   python servicenow_creator/create_records_en.py
    ```
-   You will see console output detailing record creation, Hebrew change templates, lifecycle state progressions, and a list of running changes!
+   You will see console output detailing record creation, change templates, lifecycle state progressions, and a list of running changes!
+5. **Run Automated Unit Tests**:
+   ```bash
+   # Runs directly with Python's built-in unittest (no extra packages needed)
+   python -m unittest discover -s servicenow_creator/tests -v
+
+   # Or with pytest (optional)
+   pip install -r servicenow_creator/requirements-dev.txt
+   pytest servicenow_creator/tests
+   ```
 
 ## 🤝 Contributing
 Feel free to open issues or submit pull requests if you want to add new record types, lifecycle rules, or enhance the simulation logic!

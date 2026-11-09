@@ -1,0 +1,65 @@
+name: ServiceNow Creator (English)
+
+# English edition: pure English text with English IT terms (servicenow_creator/create_records_en.py).
+#
+# In GitHub -> Actions:
+# - Enable ONLY this workflow (and disable the Hebrew one) to run English in hourly loops.
+# - Enable BOTH workflows to run both Hebrew and English in hourly loops.
+# - Click "Run workflow" anytime for an immediate one-off run.
+
+on:
+  schedule:
+    # Runs every hour on Sun-Thu
+    - cron: '0 * * * 0-4'
+    # Runs every hour on Friday from 00:00 to 09:59 UTC (Ends before Friday 13:00 Israel time)
+    - cron: '0 0-9 * * 5'
+    # Runs every hour on Saturday from 18:00 to 23:59 UTC (Starts from Saturday 21:00 Israel time)
+    - cron: '0 18-23 * * 6'
+  workflow_dispatch: # Allow manual trigger
+
+# Shared with the Hebrew workflow so the two editions never run at the same time
+concurrency:
+  group: servicenow-creator
+  cancel-in-progress: false
+
+jobs:
+  run-scripts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: |
+          if [ -f servicenow_creator/requirements.txt ]; then pip install -r servicenow_creator/requirements.txt; fi
+
+      - name: Run ServiceNow Script and Show Running Changes
+        env:
+          SN_INSTANCE: ${{ secrets.SN_INSTANCE }}
+          SN_USERNAME: ${{ secrets.SN_USERNAME }}
+          SN_PASSWORD: ${{ secrets.SN_PASSWORD }}
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: "1"
+        run: |
+          python servicenow_creator/create_records_en.py
+
+      - name: Keepalive Commit
+        run: |
+          git fetch origin ${{ github.ref_name }}
+          LAST_COMMIT=$(git log -1 --format=%ct FETCH_HEAD)
+          NOW=$(date +%s)
+          DAYS=$(( (NOW - LAST_COMMIT) / 86400 ))
+          if [ $DAYS -gt 50 ]; then
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout -B ${{ github.ref_name }} FETCH_HEAD
+            git commit --allow-empty -m "chore: keepalive commit"
+            git push origin ${{ github.ref_name }}
+          fi
